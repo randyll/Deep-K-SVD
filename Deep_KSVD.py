@@ -198,8 +198,10 @@ class DenoisingNet_MLP(torch.nn.Module):
         self.Identity = Identity
         self.device = device
 
+        # 将一个不可训练的类型Tensor转换成可以训练的类型parameter并将这个parameter绑定到这个module
         self.Dict = torch.nn.Parameter(Dict_init)
         self.c = torch.nn.Parameter(c_init)
+        # 把patch拉成vector
         self.unfold = torch.nn.Unfold(kernel_size=(self.patch_size, self.patch_size))
 
         self.linear1 = torch.nn.Linear(D_in, H_1, bias=True)
@@ -217,13 +219,16 @@ class DenoisingNet_MLP(torch.nn.Module):
         N, C, w, h = x.shape
 
         unfold = self.unfold(x)
+        # number_patches记录了图像分成的patch的数量
         N, d, number_patches = unfold.shape
         unfold = unfold.transpose(1, 2)
-
+        
+        # 通过clamp函数限制coefficients必须不小于0
         lin = self.linear1(unfold).clamp(min=0)
         lin = self.linear2(lin).clamp(min=0)
         lin = self.linear3(lin).clamp(min=0)
         lam = self.linear4(lin)
+        # 这里通过一个三层的MLP来估计参数lambda
 
         l = lam / self.c
         y = torch.matmul(unfold, self.Dict)
